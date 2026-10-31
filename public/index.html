@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EnvHub — Secure Team Configs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased flex flex-col justify-between">
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 border border-emerald-500/60 text-slate-100 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-mono transition-all"></div>
+
+  <!-- AUTH VIEW -->
+  <div id="authView" class="flex items-center justify-center min-h-screen p-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full shadow-2xl space-y-6">
+      <div class="text-center space-y-1">
+        <h1 class="text-3xl font-extrabold text-emerald-400">⚡ EnvHub</h1>
+        <p class="text-sm text-slate-400">Encrypted team environment manager</p>
+      </div>
+
+      <div class="flex border-b border-slate-800 text-sm font-semibold">
+        <button type="button" id="tabLogin" class="flex-1 pb-3 focus:outline-none">Log In</button>
+        <button type="button" id="tabSignup" class="flex-1 pb-3 focus:outline-none">Sign Up</button>
+      </div>
+
+      <form id="authForm" class="space-y-4">
+        <div>
+          <label for="authEmail" class="block text-xs font-mono text-slate-400 mb-1">EMAIL</label>
+          <input type="email" id="authEmail" required autocomplete="email" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none text-slate-200">
+        </div>
+        <div>
+          <label for="authPassword" class="block text-xs font-mono text-slate-400 mb-1">PASSWORD</label>
+          <input type="password" id="authPassword" required minlength="8" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none text-slate-200">
+        </div>
+        <p id="authError" role="alert" class="text-red-400 text-xs hidden"></p>
+        <button type="submit" id="authSubmitBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold rounded-lg py-2.5 text-sm transition shadow-lg shadow-emerald-950">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- DASHBOARD VIEW -->
+  <div id="dashView" class="hidden max-w-5xl mx-auto w-full p-6 md:p-8 space-y-6">
+    <!-- Top Header -->
+    <header class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div class="flex items-center space-x-3">
+        <span class="text-2xl font-black text-emerald-400">⚡ EnvHub</span>
+        <span class="text-xs font-mono px-2 py-0.5 rounded bg-emerald-950 border border-emerald-800 text-emerald-300">AES-256-GCM</span>
+        <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">RBAC + Audit</span>
+      </div>
+      <div class="flex items-center space-x-3">
+        <span id="userEmailBadge" class="text-xs font-mono text-slate-400 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg"></span>
+        <button type="button" id="logoutBtn" class="text-xs text-rose-400 hover:text-rose-300 px-2 py-1 font-mono transition">Log Out</button>
+      </div>
+    </header>
+
+    <!-- SDK / CLI CREDENTIALS BAR -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+      <!-- User API Key -->
+      <div class="lg:col-span-6 space-y-1">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400">Your User API Key (For Package / CLI)</span>
+          <div class="flex items-center gap-2">
+            <button type="button" id="toggleApiKeyBtn" class="text-[11px] font-mono text-slate-400 hover:text-slate-200">Show</button>
+            <button type="button" id="copyApiKeyBtn" class="text-[11px] font-mono text-emerald-400 hover:text-emerald-300">Copy</button>
+            <button type="button" id="regenApiKeyBtn" class="text-[11px] font-mono text-amber-400 hover:text-amber-300" title="Rotate API key">Rotate</button>
+          </div>
+        </div>
+        <div id="apiKeyDisplay" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-xs text-slate-300 truncate select-all">
+          ••••••••••••••••••••••••••••••••
+        </div>
+      </div>
+
+      <!-- Unique Project ID -->
+      <div class="lg:col-span-3 space-y-1">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-mono uppercase tracking-wider text-slate-400">Project ID</span>
+          <button type="button" id="copyProjectIdBtn" class="text-[11px] font-mono text-emerald-400 hover:text-emerald-300">Copy ID</button>
+        </div>
+        <div id="projectIdDisplay" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-xs text-emerald-300 truncate select-all">
+          —
+        </div>
+      </div>
+
+      <!-- Quick Copy CLI Command -->
+      <div class="lg:col-span-3 flex flex-col justify-end h-full">
+        <button type="button" id="copyCliCmdBtn" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg px-3 py-2 text-xs font-mono transition flex items-center justify-center gap-1.5">
+          <span>⚡</span> Copy CLI Pull Command
+        </button>
+      </div>
+    </section>
+
+    <!-- Project, Role & Environment Controls -->
+    <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <label for="projectSelect" class="text-xs font-mono text-slate-400">PROJECT:</label>
+        <select id="projectSelect" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none focus:border-emerald-500 text-emerald-300"></select>
+        <span id="roleBadge" class="text-[11px] font-mono uppercase px-2.5 py-1 rounded-md border border-slate-700 bg-slate-950 text-slate-300"></span>
+        <button type="button" id="newProjectBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition">+ New Project</button>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <select id="envSelect" aria-label="Environment" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:border-emerald-500">
+          <option value="development">development</option>
+          <option value="staging">staging</option>
+          <option value="production">production</option>
+        </select>
+        <button type="button" id="teamBtn" class="text-xs bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 px-3 py-1.5 rounded-lg font-semibold transition">👥 Team & Roles</button>
+        <button type="button" id="logsBtn" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg font-mono transition">📜 Activity</button>
+      </div>
+    </section>
+
+    <!-- Add Variable Form (Hidden for Viewers) -->
+    <form id="varForm" class="grid grid-cols-1 md:grid-cols-6 gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800">
+      <input id="keyInput" placeholder="KEY (e.g., DATABASE_URL)" required pattern="[A-Za-z_][A-Za-z0-9_]*" title="Letters, digits and underscores; cannot start with a digit" autocomplete="off" class="md:col-span-2 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-emerald-500 uppercase">
+      <input id="valInput" placeholder="VALUE (e.g., mongodb+srv://...)" required autocomplete="off" class="md:col-span-2 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-emerald-500">
+      <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-4 py-2 text-sm font-semibold transition shadow-md">+ Save Encrypted</button>
+      <button type="button" id="openBulkBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-lg px-3 py-2 text-xs font-mono transition">📥 Bulk Import .env</button>
+    </form>
+
+    <!-- Viewer Read-Only Notice -->
+    <div id="viewerNotice" class="hidden bg-amber-950/40 border border-amber-800/60 text-amber-300 px-4 py-2.5 rounded-xl text-xs font-mono">
+      🔒 You have <strong>viewer</strong> (read-only) access to this project. Ask an Owner or Admin to upgrade your role to <strong>editor</strong> to modify variables.
+    </div>
+
+    <!-- Variables Table -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-800">
+        <div>
+          <h2 class="font-semibold text-slate-200 text-sm tracking-wide">Environment Variables</h2>
+          <p class="text-[11px] text-slate-500 font-mono">Encrypted with AES-256-GCM + HKDF blind indexing</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="searchInput" type="search" placeholder="Filter keys..." class="bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1 text-xs font-mono focus:outline-none focus:border-emerald-500">
+          <button type="button" id="revealBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-md border border-slate-700 font-mono transition">👁 Reveal All</button>
+          <button type="button" id="copyBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-md border border-slate-700 font-mono transition">📋 Copy .env</button>
+          <button type="button" id="downloadBtn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-md border border-slate-700 font-mono transition">⬇ Download .env</button>
+        </div>
+      </div>
+      <div class="divide-y divide-slate-800" id="tableBody"></div>
+    </div>
+  </div>
+
+  <!-- TEAM & ROLES MODAL -->
+  <div id="teamModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="font-bold text-slate-100 text-lg">Team & Role Management</h3>
+          <p id="teamModalSubtitle" class="text-xs text-slate-400 font-mono"></p>
+        </div>
+        <button type="button" id="teamClose" class="text-slate-500 hover:text-slate-300 text-xl leading-none">&times;</button>
+      </div>
+
+      <!-- Invite Form (Visible to Owner/Admin) -->
+      <form id="inviteForm" class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+        <label class="block text-xs font-mono text-slate-400 uppercase">Invite Teammate</label>
+        <div class="flex flex-wrap gap-2">
+          <input type="email" id="inviteEmail" placeholder="colleague@domain.com" required class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none">
+          <select id="inviteRole" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500">
+            <option value="editor">editor (read/write)</option>
+            <option value="viewer">viewer (read-only)</option>
+            <option value="admin">admin (manage team)</option>
+          </select>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-4 py-2 text-xs font-semibold">Invite</button>
+        </div>
+      </form>
+
+      <!-- Members List -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-mono uppercase text-slate-400">Project Members</h4>
+        <div id="membersList" class="divide-y divide-slate-800 border border-slate-800 rounded-xl bg-slate-950 overflow-hidden"></div>
+      </div>
+
+      <!-- Danger Zone (Leave or Delete Project) -->
+      <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+        <button type="button" id="leaveProjectBtn" class="hidden text-xs font-mono text-rose-400 hover:text-rose-300 border border-rose-900/60 bg-rose-950/30 px-3 py-1.5 rounded-lg">Leave Project</button>
+        <button type="button" id="deleteProjectBtn" class="hidden text-xs font-mono text-rose-400 hover:text-rose-300 border border-rose-900/60 bg-rose-950/30 px-3 py-1.5 rounded-lg">🗑 Delete Entire Project</button>
+        <button type="button" id="teamDoneBtn" class="ml-auto px-4 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BULK IMPORT MODAL -->
+  <div id="bulkModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center">
+        <h3 class="font-bold text-slate-100 text-lg">Bulk Import .env</h3>
+        <button type="button" id="bulkClose" class="text-slate-500 hover:text-slate-300 text-xl leading-none">&times;</button>
+      </div>
+      <p class="text-xs text-slate-400">Paste raw <code class="text-emerald-300">KEY=VALUE</code> lines below. Comments (<code class="text-slate-300">#</code>) are ignored and existing keys are updated automatically.</p>
+      <form id="bulkForm" class="space-y-4">
+        <textarea id="bulkTextarea" rows="8" placeholder="PORT=3000&#10;DATABASE_URL=mongodb+srv://...&#10;JWT_SECRET=super_secret_key" required class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono focus:border-emerald-500 focus:outline-none text-slate-200"></textarea>
+        <div class="flex justify-end gap-2">
+          <button type="button" id="bulkCancel" class="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200">Cancel</button>
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg px-4 py-2 text-xs font-semibold">Encrypt & Import All</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ACTIVITY LOGS MODAL -->
+  <div id="logsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-xl w-full space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <div>
+          <h3 class="font-bold text-slate-100 text-lg">Project Audit & Activity Log</h3>
+          <p class="text-xs text-slate-400 font-mono">Recent variable edits, CLI pulls, and role changes</p>
+        </div>
+        <button type="button" id="logsClose" class="text-slate-500 hover:text-slate-300 text-xl leading-none">&times;</button>
+      </div>
+      <div id="logsList" class="divide-y divide-slate-800 overflow-y-auto flex-1 border border-slate-800 rounded-xl bg-slate-950"></div>
+    </div>
+  </div>
+
+  <footer class="text-center py-6 text-slate-600 text-xs font-mono border-t border-slate-900">
+    EnvHub • AES-256-GCM encryption at rest • RBAC & Audit Logs • MongoDB
+  </footer>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const ROLE_RANK = { viewer: 1, editor: 2, admin: 3, owner: 4 };
+
+    const state = {
+      mode: "login",
+      token: localStorage.getItem("envhub_jwt") || "",
+      email: localStorage.getItem("envhub_email") || "",
+      apiKey: localStorage.getItem("envhub_apikey") || "",
+      apiKeyVisible: false,
+      projects: [],
+      projectId: "",
+      vars: [],
+      search: "",
+      revealed: false,
+      editingId: null
+    };
+
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const currentEnv = () => $("envSelect").value;
+    const msg = (text) => `<p class="p-6 text-sm text-slate-500 font-mono">${esc(text)}</p>`;
+    const currentProject = () => state.projects.find((p) => (p.projectId || p._id) === state.projectId);
+    function getProjectRole(p) {
+        if (!p) return "viewer";
+        if (p.myRole) return p.myRole;
+        const myEmail = (state.email || "").toLowerCase().trim();
+        if ((p.ownerEmail || "").toLowerCase().trim() === myEmail) return "owner";
+        const me = (p.members || []).find((m) => (m.email || "").toLowerCase().trim() === myEmail);
+        return me?.role || "viewer";
+    }
+
+    const currentRole = () => getProjectRole(currentProject());
+    const canEditVars = () => (ROLE_RANK[currentRole()] || 0) >= ROLE_RANK.editor;
+    const canManageTeam = () => (ROLE_RANK[currentRole()] || 0) >= ROLE_RANK.admin;
+
+    let toastTimer;
+    function notify(text, isError = false) {
+      const el = $("toast");
+      el.textContent = text;
+      el.className = `fixed bottom-5 right-5 z-50 bg-slate-900 border ${isError ? "border-rose-500 text-rose-300" : "border-emerald-500/80 text-emerald-300"} px-4 py-2.5 rounded-xl shadow-2xl text-xs font-mono`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.add("hidden"), 3200);
+    }
+
+    async function api(url, { method = "GET", body, raw = false } = {}) {
+      const headers = {};
+      if (state.token) headers.Authorization = `Bearer ${state.token}`;
+      if (body) headers["Content-Type"] = "application/json";
+      const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+      if (res.status === 401 && state.token) {
+        logout();
+        throw new Error("Session expired. Please log in again.");
+      }
+      if (raw && res.ok) return res.text();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      return data;
+    }
+
+    // ---------- Auth & API Key ----------
+    function setMode(mode) {
+      state.mode = mode;
+      const on = "flex-1 pb-3 text-emerald-400 border-b-2 border-emerald-400 focus:outline-none";
+      const off = "flex-1 pb-3 text-slate-500 hover:text-slate-300 focus:outline-none";
+      $("tabLogin").className = mode === "login" ? on : off;
+      $("tabSignup").className = mode === "signup" ? on : off;
+      $("authSubmitBtn").textContent = mode === "login" ? "Sign In" : "Create Account";
+      $("authPassword").autocomplete = mode === "login" ? "current-password" : "new-password";
+      $("authError").classList.add("hidden");
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const btn = $("authSubmitBtn");
+      btn.disabled = true;
+      try {
+        const data = await api(`/api/auth/${state.mode}`, {
+          method: "POST",
+          body: { email: $("authEmail").value, password: $("authPassword").value }
+        });
+        state.token = data.token;
+        state.email = data.email;
+        state.apiKey = data.apiKey || "";
+        localStorage.setItem("envhub_jwt", data.token);
+        localStorage.setItem("envhub_email", data.email);
+        if (data.apiKey) localStorage.setItem("envhub_apikey", data.apiKey);
+        $("authPassword").value = "";
+        showDashboard();
+      } catch (err) {
+        $("authError").textContent = err.message;
+        $("authError").classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function renderApiKey() {
+      if (!state.apiKey) {
+        $("apiKeyDisplay").textContent = "Loading...";
+        return;
+      }
+      $("apiKeyDisplay").textContent = state.apiKeyVisible
+        ? state.apiKey
+        : `${state.apiKey.slice(0, 8)}••••••••••••••••••••••••`;
+      $("toggleApiKeyBtn").textContent = state.apiKeyVisible ? "Hide" : "Show";
+    }
+
+    async function syncProfile() {
+      try {
+        const me = await api("/api/auth/me");
+        state.email = me.email;
+        state.apiKey = me.apiKey;
+        localStorage.setItem("envhub_email", me.email);
+        localStorage.setItem("envhub_apikey", me.apiKey);
+        $("userEmailBadge").textContent = state.email;
+        renderApiKey();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function regenerateApiKey() {
+      if (!confirm("Rotate your API key? Any CLI scripts using the old key will stop working immediately.")) return;
+      try {
+        const data = await api("/api/auth/api-key/regenerate", { method: "POST" });
+        state.apiKey = data.apiKey;
+        state.apiKeyVisible = true;
+        localStorage.setItem("envhub_apikey", data.apiKey);
+        renderApiKey();
+        notify("New API key generated!");
+      } catch (err) {
+        notify(err.message, true);
+      }
+    }
+
+    function showAuth() {
+      $("authView").classList.remove("hidden");
+      $("dashView").classList.add("hidden");
+    }
+
+    function showDashboard() {
+      $("authView").classList.add("hidden");
+      $("dashView").classList.remove("hidden");
+      $("userEmailBadge").textContent = state.email;
+      renderApiKey();
+      syncProfile();
+      fetchProjects();
+    }
+
+    function logout() {
+      localStorage.removeItem("envhub_jwt");
+      localStorage.removeItem("envhub_email");
+      localStorage.removeItem("envhub_apikey");
+      Object.assign(state, {
+        token: "",
+        email: "",
+        apiKey: "",
+        apiKeyVisible: false,
+        projects: [],
+        projectId: "",
+        vars: [],
+        revealed: false,
+        editingId: null
+      });
+      showAuth();
+    }
+
+    // ---------- Projects & Role UI ----------
+    function updateProjectRoleUI() {
+      $("projectIdDisplay").textContent = state.projectId || "—";
+      const proj = currentProject();
+      const role = currentRole();
+
+      const badgeColors = {
+        owner: "border-emerald-700 bg-emerald-950/80 text-emerald-300",
+        admin: "border-cyan-700 bg-cyan-950/80 text-cyan-300",
+        editor: "border-blue-700 bg-blue-950/80 text-blue-300",
+        viewer: "border-amber-700 bg-amber-950/80 text-amber-300"
+      };
+      $("roleBadge").className = `text-[11px] font-mono uppercase px-2.5 py-1 rounded-md border ${badgeColors[role] || badgeColors.viewer}`;
+      $("roleBadge").textContent = proj ? `Role: ${role}` : "No Project";
+
+      if (proj && !canEditVars()) {
+        $("varForm").classList.add("hidden");
+        $("viewerNotice").classList.remove("hidden");
+      } else {
+        $("varForm").classList.remove("hidden");
+        $("viewerNotice").classList.add("hidden");
+      }
+    }
+
+    async function fetchProjects(preferredProjectId) {
+      try {
+        state.projects = await api("/api/projects");
+        const select = $("projectSelect");
+
+        if (!state.projects.length) {
+          select.innerHTML = `<option value="">No projects</option>`;
+          state.projectId = "";
+          updateProjectRoleUI();
+          $("tableBody").innerHTML = msg('Click "+ New Project" above to create your first workspace.');
+          return;
+        }
+        select.innerHTML = state.projects.map((p) => {
+            const pid = p.projectId || p._id;
+            const role = getProjectRole(p);
+            return `<option value="${esc(pid)}">${esc(p.name)} (${esc(role)}) — ${esc(pid)}</option>`;
+        }).join("");
+
+        const wanted = preferredProjectId || state.projectId;
+        const exists = state.projects.some((p) => (p.projectId || p._id) === wanted);
+        state.projectId = exists ? wanted : (state.projects[0].projectId || state.projects[0]._id);
+        select.value = state.projectId;
+        updateProjectRoleUI();
+        loadVariables();
+      } catch (err) {
+        $("tableBody").innerHTML = msg(`Failed to load projects: ${err.message}`);
+      }
+    }
+
+    async function createProject() {
+      const name = prompt("Enter project name:", "My Backend");
+      if (!name || !name.trim()) return;
+      try {
+        const data = await api("/api/projects", { method: "POST", body: { name: name.trim() } });
+        notify(`Project "${data.name}" created (${data.projectId})`);
+        await fetchProjects(data.projectId);
+      } catch (err) {
+        notify(err.message, true);
+      }
+    }
+
+    // ---------- Variables (With Search & Role-Gated Inline Edit) ----------
+    function renderVars() {
+      const el = $("tableBody");
+      const editable = canEditVars();
+      const query = state.search.trim().toUpperCase();
+      const filtered = query ? state.vars.filter((v) => v.key.includes(query)) : state.vars;
+
+      if (!filtered.length) {
+        el.innerHTML = msg(query ? `No variables matching "${query}".` : `No variables saved for ${currentEnv()}. Add one above.`);
+        return;
+      }
+
+      el.innerHTML = filtered.map((v) => {
+        const isEditing = editable && state.editingId === v._id;
+
+        if (isEditing) {
+          return `
+            <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-3 bg-slate-800/60 font-mono text-sm">
+              <span class="text-emerald-400 font-bold tracking-wide break-all">${esc(v.key)}</span>
+              <div class="flex items-center gap-2 flex-1 max-w-xl justify-end">
+                <input
+                  type="text"
+                  id="editInput_${esc(v._id)}"
+                  value="${esc(v.value)}"
+                  class="flex-1 bg-slate-950 border border-emerald-500 rounded-lg px-3 py-1.5 text-sm text-slate-100 focus:outline-none"
+                >
+                <button type="button" data-save="${esc(v._id)}" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">Save</button>
+                <button type="button" data-cancel="${esc(v._id)}" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-3 py-1.5 rounded-lg border border-slate-700 transition">Cancel</button>
+              </div>
+            </div>`;
+        }
+
+        return `
+          <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-3 hover:bg-slate-800/40 font-mono text-sm">
+            <div class="min-w-0">
+              <span class="text-emerald-400 font-bold tracking-wide break-all">${esc(v.key)}</span>
+              ${v.updatedBy ? `<span class="block text-[10px] text-slate-500">by ${esc(v.updatedBy)}</span>` : ""}
+            </div>
+            <div class="flex items-center space-x-3 min-w-0">
+              <span
+                ${editable ? `data-edit="${esc(v._id)}" title="Click to edit value"` : ""}
+                class="${editable ? "cursor-pointer hover:border-slate-600" : ""} text-slate-300 bg-slate-950 px-3 py-1 rounded border border-slate-800 truncate max-w-xs md:max-w-md select-all"
+              >${state.revealed ? esc(v.value) : "••••••••••"}</span>
+              ${editable ? `
+                <button type="button" data-edit="${esc(v._id)}" class="text-emerald-400 hover:text-emerald-300 text-xs transition">Edit</button>
+                <button type="button" data-delete="${esc(v._id)}" class="text-slate-500 hover:text-rose-400 text-xs transition">Delete</button>
+              ` : ""}
+            </div>
+          </div>`;
+      }).join("");
+
+      if (state.editingId && editable) {
+        const inp = $(`editInput_${state.editingId}`);
+        if (inp) {
+          inp.focus();
+          inp.select();
+          inp.onkeydown = (e) => {
+            if (e.key === "Enter") { e.preventDefault(); saveInlineEdit(state.editingId); }
+            if (e.key === "Escape") { state.editingId = null; renderVars(); }
+          };
+        }
+      }
+    }
+
+    async function saveInlineEdit(id) {
+      const inp = $(`editInput_${id}`);
+      if (!inp) return;
+      const newValue = inp.value;
+
+      try {
+        await api(`/api/envs/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: { projectId: state.projectId, value: newValue }
+        });
+        const item = state.vars.find((v) => v._id === id);
+        if (item) {
+          item.value = newValue;
+          item.updatedBy = state.email;
+        }
+        state.editingId = null;
+        renderVars();
+        notify(`Updated ${item ? item.key : "variable"}!`);
+      } catch (err) {
+        notify(err.message, true);
+      }
+    }
+
+    async function loadVariables() {
+      state.editingId = null;
+      if (!state.projectId) {
+        $("tableBody").innerHTML = msg("Select or create a project first.");
+        return;
+      }
+      const requestedProject = state.projectId, requestedEnv = currentEnv();
+      $("tableBody").innerHTML = msg("Decrypting variables...");
+      try {
+        const data = await api(`/api/envs?projectId=${encodeURIComponent(requestedProject)}&environment=${encodeURIComponent(requestedEnv)}`);
+        if (requestedProject !== state.projectId || requestedEnv !== currentEnv()) return;
+        state.vars = data;
+        renderVars();
+      } catch (err) {
+        $("tableBody").innerHTML = msg(err.message);
+      }
+    }
+
+    async function addVariable(e) {
+      e.preventDefault();
+      if (!state.projectId) return notify("Select or create a project first", true);
+      try {
+        const key = $("keyInput").value.trim().toUpperCase();
+        await api("/api/envs", {
+          method: "POST",
+          body: {
+            projectId: state.projectId,
+            environment: currentEnv(),
+            key,
+            value: $("valInput").value
+          }
+        });
+        $("keyInput").value = "";
+        $("valInput").value = "";
+        notify(`Saved ${key}`);
+        loadVariables();
+      } catch (err) {
+        notify(err.message, true);
+      }
+    }
+
+    async function deleteVariable(id) {
+      if (!confirm("Delete this variable?")) return;
+      try {
+        await api("/api/envs", { method: "DELETE", body: { projectId: state.projectId, id } });
+        notify("Variable deleted");
+        loadVariables();
+      } catch (err) {
+        notify(err.message, true);
+      }
+    }
+
+    async function copyRawEnv() {
+      if (!state.projectId) return;
+      try {
+        const text = await api(`/api/envs?projectId=${encodeURIComponent(state.projectId)}&environment=${encodeURIComponent(currentEnv())}&format=raw`, { raw: true });
+        await navigator.clipboard.writeText(text);
+        notify(`Copied ${currentEnv()} .env to clipboard!`);
+      } catch (err) {
+        notify(err.message || "Could not copy", true);
+      }
+    }
+
+    async function downloadRawEnv() {
+      if (!state.projectId) return;
+      try {
+        const text = await api(`/api/envs?projectId=${encodeURIComponent(state.projectId)}&environment=${encodeURIComponent(currentEnv())}&format=raw`, { raw: true });
+        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `.env.${currentEnv()}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        notify(`Downloaded .env.${currentEnv()}`);
+      } catch (err) {
+        notify(err.message || "Could not download", true);
+      }
+    }
+
+    // ---------- Team & Roles Modal ----------
+    function renderTeamModal() {
+      const proj = currentProject();
+      if (!proj) return;
+      const myRole = currentRole();
+      const isOwner = myRole === "owner";
+      const isAdminOrOwner = canManageTeam();
+
+      $("teamModalSubtitle").textContent = `${proj.name} (${proj.projectId}) — Your role: ${myRole.toUpperCase()}`;
+      $("inviteForm").classList.toggle("hidden", !isAdminOrOwner);
+      $("deleteProjectBtn").classList.toggle("hidden", !isOwner);
+      $("leaveProjectBtn").classList.toggle("hidden", isOwner);
+
+      $("membersList").innerHTML = (proj.members || []).map((m) => {
+        const mRole = m.email === proj.ownerEmail ? "owner" : (m.role || "editor");
+        const canModifyThisMember =
+          isAdminOrOwner &&
+          mRole !== "owner" &&
+          m.email !== state.email &&
+          (isOwner || mRole !== "admin");
+
+        return `
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs font-mono">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-200">${esc(m.email)}</span>
+              ${m.email === state.email ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">you</span>` : ""}
+            </div>
+            <div class="flex items-center gap-2">
+              ${canModifyThisMember ? `
+                <select data-role-email="${esc(m.email)}" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-emerald-300 focus:outline-none">
+                  <option value="viewer" ${mRole === "viewer" ? "selected" : ""}>viewer</option>
+                  <option value="editor" ${mRole === "editor" ? "selected" : ""}>editor</option>
+                  ${isOwner ? `<option value="admin" ${mRole === "admin" ? "selected" : ""}>admin</option>` : ""}
+                </select>
+                <button type="button" data-remove-email="${esc(m.email)}" class="text-rose-400 hover:text-rose-300 px-2 py-1 rounded border border-rose-900/50 bg-rose-950/30">Remove</button>
+              ` : `
+                <span class="px-2 py-1 rounded bg-slate-900 border border-slate-800 text-slate-400 uppercase text-[11px]">${esc(mRole)}</span>
+              `}
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    function openTeamModal() {
+      if (!state.projectId) return notify("Select a project first", true);
+      renderTeamModal();
+      $("teamModal").classList.replace("hidden", "flex");
+    }
+
+    function closeTeamModal() {
+      $("teamModal").classList.replace("flex", "hidden");
+      $("inviteEmail").value = "";
+    }
+
+    async function submitInvite(e) {
+      e.preventDefault();
+      try {
+        const email = $("inviteEmail").value;
+        const role = $("inviteRole").value;
+        const data = await api(`/api/projects/${encodeURIComponent(state.projectId)}/invite`, {
+          method: "POST",
+          body: { email, role }
+        });
+        notify(data.message);
+        $("inviteEmail").value = "";
+        await fetchProjects(state.projectId);
+        renderTeamModal();
+      } catch (err) {
+        notify(err.message, true);
+      }
+    }
+
+    async function updateMemberRole(email, role) {
+      try {
+        const data = await api(`/api/projects/${encodeURIComponent(state.projectId)}/members`, {
+          method: "PATCH",
+          body: { email, role }
+        });
+        notify(data.message);
+        await fetchProjects(state.projectId);
+        renderTeamModal();
+      } catch (err) {
+        notify(err.message, true);
+        renderTeamModal();
+      }
+    }
+
+    async function removeMember(email, isSelf = false) {
+      const promptMsg = isSelf ? "Leave this project?" : `Remove ${email} from this project?`;
+      if (!confirm(promptMsg)) return;
+      try {
+        const data = await api(`/api/projects/${encodeURIComponent(state.projectId)}/members`, {
+          method: "DELETE",
+          body: { email }
+        });
+        notify(data.message);
+        if (isSelf) {
+          closeTeamModal();
+          await fetchProjects();
+        } else {
+          await fetchProjects(state.projectId);
+          renderTeamModal();
+        }
+      } catch (err) {
+        notify(err.message, true);
+      }
+    }
+
+    async function deleteCurrentProject() {
+      const proj = currentProject();
+      if (!proj) return;
+      if (!confirm(`Permanently delete project "${proj.name}" and all its encrypted variables?`)) return;
+      try {
+        const data = await api(`/api/projects/${encodeURIComponent(state.projectId)}`, { method: "DELETE" });
+        notify(data.message);
+        closeTeamModal();
+        await fetchProjects();
+      } catch (err) {
+        notify(err.message, true);
+      }
+    }
+
+    // ---------- Bulk Import Modal ----------
+    function openBulkModal() {
+      if (!state.projectId) return notify("Select a project first", true);
+      $("bulkModal").classList.replace("hidden", "flex");
+      $("bulkTextarea").focus();
+    }
+    function closeBulkModal() {
+      $("bulkModal").classList.replace("flex", "hidden");
+      $("bulkTextarea").value = "";
+    }
+    async function submitBulkImport(e) {
+      e.preventDefault();
+      try {
+        const data = await api("/api/envs/bulk", {
+          method: "POST",
+          body: {
+            projectId: state.projectId,
+            environment: currentEnv(),
+            rawEnv: $("bulkTextarea").value
+          }
+        });
+        notify(`Imported ${data.count} variable(s) into ${currentEnv()}!`);
+        closeBulkModal();
+        loadVariables();
+      } catch (err) {
+        notify(err.message, true);
+      }
+    }
+
+    // ---------- Activity Logs Modal ----------
+    async function openLogsModal() {
+      if (!state.projectId) return notify("Select a project first", true);
+      $("logsModal").classList.replace("hidden", "flex");
+      $("logsList").innerHTML = msg("Loading activity logs...");
+      try {
+        const logs = await api(`/api/projects/${encodeURIComponent(state.projectId)}/logs`);
+        if (!logs.length) {
+          $("logsList").innerHTML = msg("No activity recorded yet.");
+          return;
+        }
+        $("logsList").innerHTML = logs.map((l) => {
+          const ts = new Date(l.createdAt).toLocaleString();
+          const meta = l.details ? JSON.stringify(l.details) : "";
+          return `
+            <div class="px-4 py-3 text-xs font-mono flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span class="text-emerald-400 font-bold">${esc(l.action)}</span>
+                <span class="text-slate-400"> by ${esc(l.actorEmail)}</span>
+                ${meta && meta !== "{}" ? `<span class="block text-[11px] text-slate-500">${esc(meta)}</span>` : ""}
+              </div>
+              <span class="text-[10px] text-slate-500">${esc(ts)}</span>
+            </div>`;
+        }).join("");
+      } catch (err) {
+        $("logsList").innerHTML = msg(err.message);
+      }
+    }
+    function closeLogsModal() {
+      $("logsModal").classList.replace("flex", "hidden");
+    }
+
+    // ---------- Event Listeners ----------
+    $("tabLogin").onclick = () => setMode("login");
+    $("tabSignup").onclick = () => setMode("signup");
+    $("authForm").onsubmit = handleAuth;
+    $("logoutBtn").onclick = logout;
+
+    $("projectSelect").onchange = (e) => {
+      state.projectId = e.target.value;
+      updateProjectRoleUI();
+      loadVariables();
+    };
+    $("envSelect").onchange = loadVariables;
+    $("newProjectBtn").onclick = createProject;
+
+    // Team & Role Modal Actions
+    $("teamBtn").onclick = openTeamModal;
+    $("teamClose").onclick = $("teamDoneBtn").onclick = closeTeamModal;
+    $("inviteForm").onsubmit = submitInvite;
+    $("leaveProjectBtn").onclick = () => removeMember(state.email, true);
+    $("deleteProjectBtn").onclick = deleteCurrentProject;
+    $("membersList").onchange = (e) => {
+      const email = e.target.dataset?.roleEmail;
+      if (email) updateMemberRole(email, e.target.value);
+    };
+    $("membersList").onclick = (e) => {
+      const btn = e.target.closest("[data-remove-email]");
+      if (btn) removeMember(btn.dataset.removeEmail, false);
+    };
+
+    // Bulk Import & Activity Log Actions
+    $("openBulkBtn").onclick = openBulkModal;
+    $("bulkClose").onclick = $("bulkCancel").onclick = closeBulkModal;
+    $("bulkForm").onsubmit = submitBulkImport;
+    $("logsBtn").onclick = openLogsModal;
+    $("logsClose").onclick = closeLogsModal;
+
+    // Variable Actions
+    $("varForm").onsubmit = addVariable;
+    $("copyBtn").onclick = copyRawEnv;
+    $("downloadBtn").onclick = downloadRawEnv;
+    $("searchInput").oninput = (e) => {
+      state.search = e.target.value;
+      renderVars();
+    };
+
+    // Credentials Bar Actions
+    $("toggleApiKeyBtn").onclick = () => {
+      state.apiKeyVisible = !state.apiKeyVisible;
+      renderApiKey();
+    };
+    $("copyApiKeyBtn").onclick = async () => {
+      if (!state.apiKey) return;
+      await navigator.clipboard.writeText(state.apiKey);
+      notify("User API Key copied to clipboard!");
+    };
+    $("regenApiKeyBtn").onclick = regenerateApiKey;
+    $("copyProjectIdBtn").onclick = async () => {
+      if (!state.projectId) return;
+      await navigator.clipboard.writeText(state.projectId);
+      notify(`Project ID (${state.projectId}) copied!`);
+    };
+    $("copyCliCmdBtn").onclick = async () => {
+      if (!state.apiKey || !state.projectId) return notify("Create a project first", true);
+      const cmd = `node package.js --key ${state.apiKey} --project ${state.projectId} --env ${currentEnv()}`;
+      await navigator.clipboard.writeText(cmd);
+      notify("CLI command copied to clipboard!");
+    };
+
+    $("revealBtn").onclick = () => {
+      state.revealed = !state.revealed;
+      $("revealBtn").textContent = state.revealed ? "🙈 Hide All" : "👁 Reveal All";
+      renderVars();
+    };
+
+    $("tableBody").onclick = (e) => {
+      const btn = e.target.closest("[data-edit],[data-save],[data-cancel],[data-delete]");
+      if (!btn) return;
+      if (btn.dataset.edit) {
+        state.editingId = btn.dataset.edit;
+        renderVars();
+      } else if (btn.dataset.save) {
+        saveInlineEdit(btn.dataset.save);
+      } else if (btn.dataset.cancel) {
+        state.editingId = null;
+        renderVars();
+      } else if (btn.dataset.delete) {
+        deleteVariable(btn.dataset.delete);
+      }
+    };
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeTeamModal();
+        closeBulkModal();
+        closeLogsModal();
+      }
+    });
+
+    setMode("login");
+    state.token && state.email ? showDashboard() : showAuth();
+  </script>
+</body>
+</html>
